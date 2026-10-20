@@ -1,0 +1,49 @@
+// KernelForge Device-side Runtime Library
+
+int kf_min(int a, int b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+int kf_max(int a, int b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+float kf_fmin(float a, float b) {
+    if (a < b) {
+        return a;
+    }
+    return b;
+}
+
+float kf_fmax(float a, float b) {
+    if (a > b) {
+        return a;
+    }
+    return b;
+}
+
+int kf_clamp(int x, int low, int high) {
+    if (x < low) {
+        return low;
+    }
+    if (x > high) {
+        return high;
+    }
+    return x;
+}
+
+float kf_fclamp(float x, float low, float high) {
+    if (x < low) {
+        return low;
+    }
+    if (x > high) {
+        return high;
+    }
+    return x;
+}

@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake g++ build-essential
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS="-Wall -Wextra -pedantic"
+
+      - name: Build KernelForge Toolchain & Test Suite
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Run Test Suite (Unit, Golden, Differential)
+        run: |
+          cd build
+          ./kf_test
+
+      - name: End-to-End Pipeline: vec_add & runtime
+        run: |
+          cd build
+          ./kfc ../examples/vec_add.kl -O2 -o vec_add.ko
+          ./kfc ../runtime/runtime.kl -O2 -o runtime.ko
+          ./kld vec_add.ko runtime.ko -o vec_add.kx
+          ./ksim vec_add.kx --grid 2 --block 16 --warp 8 --stats --dump-mem 0x3000 8
+
+      - name: End-to-End Pipeline: branch divergence
+        run: |
+          cd build
+          ./kfc ../examples/divergence.kl -O2 -o divergence.ko
+          ./kld divergence.ko -o divergence.kx
+          ./ksim divergence.kx --grid 1 --block 16 --warp 8 --stats
+
+      - name: End-to-End Pipeline: parallel reduction
+        run: |
+          cd build
+          ./kfc ../examples/reduce.kl -O2 -o reduce.ko
+          ./kld reduce.ko -o reduce.kx
+          ./ksim reduce.kx --grid 1 --block 16 --warp 8 --stats

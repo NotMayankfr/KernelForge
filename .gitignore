@@ -1,0 +1,14 @@
+build/
+bin/
+*.o
+*.a
+*.ko
+*.kx
+*.ka
+.vscode/
+.idea/
+CMakeFiles/
+CMakeCache.txt
+CTestTestfile.cmake
+Makefile
+cmake_install.cmake

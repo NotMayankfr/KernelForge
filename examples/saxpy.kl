@@ -1,0 +1,6 @@
+kernel saxpy(float a, global float* x, global float* y, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < n) {
+        y[i] = a * x[i] + y[i];
+    }
+}

@@ -1,0 +1,26 @@
+shared float sdata[256];
+
+kernel reduce_sum(global float* in, global float* out, int n) {
+    int tid = threadIdx.x;
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) {
+        sdata[tid] = in[i];
+    } else {
+        sdata[tid] = 0.0f;
+    }
+    __sync();
+
+    int s = blockDim.x / 2;
+    while (s > 0) {
+        if (tid < s) {
+            sdata[tid] += sdata[tid + s];
+        }
+        __sync();
+        s = s / 2;
+    }
+
+    if (tid == 0) {
+        out[blockIdx.x] = sdata[0];
+    }
+}

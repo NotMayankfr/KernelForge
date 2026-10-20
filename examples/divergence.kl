@@ -1,0 +1,10 @@
+kernel divergence_test(global int* out, int n) {
+    int tid = threadIdx.x;
+    int val = 0;
+    if (tid % 2 == 0) {
+        val = tid * 10;
+    } else {
+        val = tid * 20;
+    }
+    out[tid] = val;
+}
