@@ -55,4 +55,4 @@ jobs:
           cd build
           ./kfc ../examples/reduce.kl -O2 -o reduce.ko
           ./kld reduce.ko -o reduce.kx
-          ./ksim reduce.kx --grid 1 --block 16 --warp 8 --stats
+          ./ksim reduce.kx --grid 1 --block 16 --warp 8 --stats --dump-mem 0x2000 1

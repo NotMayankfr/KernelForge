@@ -36,7 +36,17 @@ public:
     }
 
     BasicBlock* createBasicBlock(const std::string& name = "") {
-        std::string bbName = name.empty() ? "bb" + std::to_string(basicBlocks.size()) : name;
+        std::string base = name.empty() ? "bb" : name;
+        std::string bbName = base;
+        int suffix = 1;
+        while (true) {
+            bool collision = false;
+            for (const auto& b : basicBlocks) {
+                if (b->name == bbName) { collision = true; break; }
+            }
+            if (!collision) break;
+            bbName = base + "_" + std::to_string(suffix++);
+        }
         auto bb = std::make_unique<BasicBlock>(bbName, this);
         BasicBlock* ptr = bb.get();
         basicBlocks.push_back(std::move(bb));

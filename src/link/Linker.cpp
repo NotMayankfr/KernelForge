@@ -37,6 +37,7 @@ Linker::LinkResult Linker::link(const std::vector<ObjectFile>& objects) {
                     rs.finalPC = totalInstructions + sym.value;
                     rs.type = static_cast<SymbolType>(sym.type);
                     rs.isKernel = (rs.type == SymbolType::KERNEL);
+                    rs.paramCount = sym.paramCount;
                     globalSymbols[name] = rs;
                 }
             }
@@ -116,7 +117,7 @@ Linker::LinkResult Linker::link(const std::vector<ObjectFile>& objects) {
             std::memset(&kd, 0, sizeof(kd));
             std::strncpy(kd.name, name.c_str(), sizeof(kd.name) - 1);
             kd.entryPC = sym.finalPC;
-            kd.paramCount = 4; // default
+            kd.paramCount = sym.paramCount > 0 ? sym.paramCount : 4;
             kd.localStackSize = 1024;
             kd.sharedMemSize = 16384;
             exe.kernels.push_back(kd);

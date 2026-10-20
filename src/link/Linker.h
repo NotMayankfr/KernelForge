@@ -27,6 +27,7 @@ private:
         uint32_t finalPC;
         SymbolType type;
         bool isKernel;
+        uint16_t paramCount = 0;
     };
 };
 

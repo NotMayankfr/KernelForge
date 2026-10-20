@@ -56,6 +56,25 @@ Register InstructionSelector::getOrCreateReg(ir::Value* val, MachineBasicBlock* 
         return r;
     }
 
+    if (auto* gv = dynamic_cast<ir::GlobalVariable*>(val)) {
+        Register r = allocateVirtualReg(ir::IRType::getInt32().get());
+        auto mov = std::make_unique<MachineInst>(MachineOpcode::MOV_B32);
+        mov->addOperand(MachineOperand::createReg(r));
+        uint32_t offset = 0;
+        auto it = globalOffsets_.find(gv);
+        if (it != globalOffsets_.end()) {
+            offset = it->second;
+        }
+        mov->addOperand(MachineOperand::createImmInt(static_cast<int32_t>(offset)));
+        if (entryMBB_) {
+            entryMBB_->addInstruction(std::move(mov));
+        } else {
+            curMBB->addInstruction(std::move(mov));
+        }
+        valToReg_[val] = r;
+        return r;
+    }
+
     Register r = allocateVirtualReg(val->type.get());
     valToReg_[val] = r;
     return r;
@@ -75,6 +94,16 @@ MachineOperand InstructionSelector::lowerOperand(ir::Value* val, MachineBasicBlo
 }
 
 std::unique_ptr<MachineModule> InstructionSelector::select(ir::Module* irModule) {
+    globalOffsets_.clear();
+    uint32_t currentSharedOffset = 0;
+    for (const auto& gv : irModule->globals) {
+        if (gv->addressSpace == AddressSpace::Shared) {
+            globalOffsets_[gv.get()] = currentSharedOffset;
+            size_t count = gv->arraySize > 0 ? gv->arraySize : 1;
+            currentSharedOffset += static_cast<uint32_t>(count * 4);
+        }
+    }
+
     auto mMod = std::make_unique<MachineModule>(irModule->name);
     for (const auto& func : irModule->functions) {
         mMod->functions.push_back(selectFunction(func.get()));
@@ -99,6 +128,7 @@ std::unique_ptr<MachineFunction> InstructionSelector::selectFunction(ir::Functio
         MachineBasicBlock* mBB = mFunc->createBlock(bbPtr->name);
         bbMap[bbPtr.get()] = mBB;
     }
+    entryMBB_ = mFunc->blocks.empty() ? nullptr : mFunc->blocks.front().get();
 
     // Connect MBB predecessors & successors
     for (const auto& bbPtr : irFunc->basicBlocks) {

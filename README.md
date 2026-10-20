@@ -209,6 +209,31 @@ Barrier Syncs:               0
   [7] float=21 (int=1101529088)
 ```
 
+### 6. Parallel Tree Reduction with Shared Memory & Barriers (`examples/reduce.kl`)
+```bash
+./kfc ../examples/reduce.kl -O2 -o reduce.ko
+./kld reduce.ko -o reduce.kx
+./ksim reduce.kx --grid 1 --block 16 --warp 8 --stats --dump-mem 0x2000 1
+```
+
+Output:
+```
+KernelForge Simulator launching 'reduce_sum' on Grid (1, 1, 1), Block (16, 1, 1), WarpSize 8 (16 total threads)
+Kernel completed successfully.
+
+=== Simulation Statistics ===
+Total Instructions Executed: 194
+Divergent Branches:          4
+Global Memory Reads:         47
+Global Memory Writes:        32
+Barrier Syncs:               10
+
+=== Dump Global Memory [0x2000 - 1 elements] ===
+  [0] float=120 (int=1123024896)
+```
+In this 16-thread reduction with warp size 8 (2 warps per block), inputs $0.0f..15.0f$ are cooperatively loaded into thread-block `shared float sdata[]`, synchronized across warps with `__sync()` (`bar.sync 0`), summed through binary tree reduction steps with reconvergent branch handling, and the sum $120.0f$ is written to `out[0]`.
+
+
 ---
 
 ## Interactive Debugger (`ksim --debug`)

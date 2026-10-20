@@ -62,7 +62,7 @@ struct SymbolEntry {
     uint32_t nameOffset;
     uint8_t type;
     uint8_t binding;
-    uint16_t sectionIndex;
+    uint16_t paramCount; // parameter count for KERNEL/FUNC symbols
     uint32_t value; // offset within section
     uint32_t size;
 };

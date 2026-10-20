@@ -79,7 +79,7 @@ ObjectFile Assembler::assemble(const backend::MachineModule* mod) {
         sym.nameOffset = addString(func->name);
         sym.type = func->isKernel ? static_cast<uint8_t>(SymbolType::KERNEL) : static_cast<uint8_t>(SymbolType::FUNC);
         sym.binding = static_cast<uint8_t>(SymbolBinding::GLOBAL);
-        sym.sectionIndex = 0; // .text section
+        sym.paramCount = static_cast<uint16_t>(func->paramNames.size());
         sym.value = funcStartPC; // instruction index
         sym.size = 0; // updated later
 
@@ -191,7 +191,7 @@ ObjectFile Assembler::assemble(const backend::MachineModule* mod) {
             sym.nameOffset = addString(pr.label);
             sym.type = static_cast<uint8_t>(SymbolType::FUNC);
             sym.binding = static_cast<uint8_t>(SymbolBinding::GLOBAL);
-            sym.sectionIndex = 0;
+            sym.paramCount = 0;
             sym.value = 0;
             sym.size = 0;
             obj.symbols.push_back(sym);

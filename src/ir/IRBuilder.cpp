@@ -265,8 +265,8 @@ void IRBuilder::visit(VarExprAST* node) {
         lastExprValue_ = nullptr;
         return;
     }
-    // If it's an alloca or global, load from it
-    if (slot->type->isPointer()) {
+    // Only load from stack alloca slots (local variables). Arguments and Globals are values/pointers themselves.
+    if (dynamic_cast<AllocaInst*>(slot)) {
         lastExprValue_ = createLoad(slot, node->name + "_val");
     } else {
         lastExprValue_ = slot;
@@ -290,8 +290,19 @@ Value* IRBuilder::emitLValue(ExprAST* expr) {
         return lookupVar(v->name);
     }
     if (auto* idx = dynamic_cast<IndexExprAST*>(expr)) {
-        idx->base->accept(this);
-        Value* baseVal = lastExprValue_;
+        Value* baseVal = nullptr;
+        if (auto* v = dynamic_cast<VarExprAST*>(idx->base.get())) {
+            baseVal = lookupVar(v->name);
+            if (baseVal && baseVal->type && baseVal->type->isPointer()) {
+                auto* pt = static_cast<PointerIRType*>(baseVal->type.get());
+                if (pt->pointee && pt->pointee->isPointer()) {
+                    baseVal = createLoad(baseVal, v->name + "_ptr");
+                }
+            }
+        } else {
+            idx->base->accept(this);
+            baseVal = lastExprValue_;
+        }
         idx->index->accept(this);
         Value* indexVal = lastExprValue_;
         return createGEP(baseVal, indexVal, "gep");

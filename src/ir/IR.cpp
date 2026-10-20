@@ -98,9 +98,16 @@ const char* predicateToString(CmpPredicate pred) {
 LoadInst::LoadInst(Value* ptr, std::string name, BasicBlock* parent)
     : Instruction(Opcode::Load, nullptr, std::move(name), parent) {
     setOperand(0, ptr);
-    if (ptr && ptr->type && ptr->type->isPointer()) {
-        auto* pt = static_cast<PointerIRType*>(ptr->type.get());
-        type = pt->pointee;
+    if (ptr && ptr->type) {
+        if (ptr->type->isPointer()) {
+            auto* pt = static_cast<PointerIRType*>(ptr->type.get());
+            type = pt->pointee;
+        } else if (ptr->type->isArray()) {
+            auto* at = static_cast<ArrayIRType*>(ptr->type.get());
+            type = at->elementType;
+        } else {
+            type = IRType::getInt32();
+        }
     } else {
         type = IRType::getInt32();
     }
@@ -108,8 +115,13 @@ LoadInst::LoadInst(Value* ptr, std::string name, BasicBlock* parent)
 
 AddressSpace LoadInst::getAddressSpace() const {
     Value* ptr = getPointer();
-    if (ptr && ptr->type && ptr->type->isPointer()) {
-        return static_cast<PointerIRType*>(ptr->type.get())->addressSpace;
+    if (ptr && ptr->type) {
+        if (ptr->type->isPointer()) {
+            return static_cast<PointerIRType*>(ptr->type.get())->addressSpace;
+        }
+        if (ptr->type->isArray()) {
+            return static_cast<ArrayIRType*>(ptr->type.get())->addressSpace;
+        }
     }
     return AddressSpace::Generic;
 }
@@ -122,8 +134,13 @@ StoreInst::StoreInst(Value* val, Value* ptr, BasicBlock* parent)
 
 AddressSpace StoreInst::getAddressSpace() const {
     Value* ptr = getPointer();
-    if (ptr && ptr->type && ptr->type->isPointer()) {
-        return static_cast<PointerIRType*>(ptr->type.get())->addressSpace;
+    if (ptr && ptr->type) {
+        if (ptr->type->isPointer()) {
+            return static_cast<PointerIRType*>(ptr->type.get())->addressSpace;
+        }
+        if (ptr->type->isArray()) {
+            return static_cast<ArrayIRType*>(ptr->type.get())->addressSpace;
+        }
     }
     return AddressSpace::Generic;
 }
@@ -132,17 +149,32 @@ GetElementPtrInst::GetElementPtrInst(Value* ptr, Value* index, std::string name,
     : Instruction(Opcode::GetElementPtr, nullptr, std::move(name), parent) {
     setOperand(0, ptr);
     setOperand(1, index);
-    if (ptr && ptr->type && ptr->type->isPointer()) {
-        type = ptr->type; // Result is also pointer with same address space and pointee
+    if (ptr && ptr->type) {
+        if (ptr->type->isPointer()) {
+            type = ptr->type; // Result is also pointer with same address space and pointee
+        } else if (ptr->type->isArray()) {
+            auto* at = static_cast<ArrayIRType*>(ptr->type.get());
+            type = IRType::getPointer(at->elementType, at->addressSpace);
+        } else {
+            type = IRType::getPointer(IRType::getInt32());
+        }
     } else {
         type = IRType::getPointer(IRType::getInt32());
     }
 }
 
 AddressSpace GetElementPtrInst::getAddressSpace() const {
+    if (type && type->isPointer()) {
+        return static_cast<PointerIRType*>(type.get())->addressSpace;
+    }
     Value* ptr = getPointer();
-    if (ptr && ptr->type && ptr->type->isPointer()) {
-        return static_cast<PointerIRType*>(ptr->type.get())->addressSpace;
+    if (ptr && ptr->type) {
+        if (ptr->type->isPointer()) {
+            return static_cast<PointerIRType*>(ptr->type.get())->addressSpace;
+        }
+        if (ptr->type->isArray()) {
+            return static_cast<ArrayIRType*>(ptr->type.get())->addressSpace;
+        }
     }
     return AddressSpace::Generic;
 }

@@ -137,3 +137,65 @@ TEST_CASE("Simulator handles branch divergence with reconvergence stack") {
         }
     }
 }
+
+TEST_CASE("Simulator executes parallel tree reduction with shared memory and barriers (reduce.kl)") {
+    std::string src = R"(
+        shared float sdata[256];
+
+        kernel reduce_sum(global float* in, global float* out, int n) {
+            int tid = threadIdx.x;
+            int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+            if (i < n) {
+                sdata[tid] = in[i];
+            } else {
+                sdata[tid] = 0.0f;
+            }
+            __sync();
+
+            int s = blockDim.x / 2;
+            while (s > 0) {
+                if (tid < s) {
+                    sdata[tid] += sdata[tid + s];
+                }
+                __sync();
+                s = s / 2;
+            }
+
+            if (tid == 0) {
+                out[blockIdx.x] = sdata[0];
+            }
+        }
+    )";
+    ExecutableFile exe = compileAndLink(src, "reduce.kl");
+    REQUIRE(!exe.kernels.empty());
+
+    SimulationConfig config;
+    config.gridDimX = 1;
+    config.blockDimX = 16;
+    config.warpSize = 8; // 2 warps per block
+
+    Simulator sim(exe, config);
+
+    uint32_t n = 16;
+    uint32_t addrIn = 0x1000;
+    uint32_t addrOut = 0x2000;
+
+    // in[i] = i for i=0..15 -> sum is 0+1+2+...+15 = 120
+    for (uint32_t i = 0; i < n; ++i) {
+        sim.writeGlobalFloat(addrIn + i * 4, static_cast<float>(i));
+    }
+    sim.writeGlobalFloat(addrOut, 0.0f);
+
+    sim.initKernel("reduce_sum", {addrIn, addrOut, n});
+    sim.run();
+
+    // Verify barriers executed
+    CHECK(sim.getStats().barrierCount >= 2);
+    CHECK(sim.getStats().divergentBranches >= 1);
+
+    // Verify reduction output: sum of 0..15 is 120.0f
+    float totalSum = sim.readGlobalFloat(addrOut);
+    CHECK(totalSum == doctest::Approx(120.0f));
+}
+

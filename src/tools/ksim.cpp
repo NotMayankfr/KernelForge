@@ -77,7 +77,19 @@ int main(int argc, char** argv) {
         sim.writeGlobalFloat(addrC + i * 4, 0.0f);
     }
 
-    std::vector<uint32_t> params = {addrA, addrB, addrC, n};
+    const auto* kd = exe.getKernel(kernelName);
+    uint32_t pCount = (kd && kd->paramCount > 0) ? kd->paramCount : 4;
+
+    std::vector<uint32_t> params;
+    if (pCount == 4) {
+        params = {addrA, addrB, addrC, n};
+    } else if (pCount == 3) {
+        params = {addrA, addrB, n};
+    } else if (pCount == 2) {
+        params = {addrA, n};
+    } else {
+        params = {addrA, addrB, addrC, n};
+    }
     sim.initKernel(kernelName, params);
 
     std::cout << "KernelForge Simulator launching '" << kernelName << "' on Grid ("
